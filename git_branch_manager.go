@@ -17,7 +17,7 @@ func main() {
 			listSortedBranches()
 		case "keep":
 			if len(args) < 2 {
-				fmt.Println("Usage: gg keep [branches to keep...]")
+				fmt.Println("Usage: ggg keep [branches to keep...]")
 				os.Exit(1)
 			}
 			keepBranches(args[1:])
@@ -26,7 +26,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else {
-		fmt.Println("Usage: gg [list|keep]")
+		fmt.Println("Usage: ggg [list|keep]")
 		os.Exit(1)
 	}
 }
