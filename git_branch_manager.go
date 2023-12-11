@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -21,13 +22,43 @@ func main() {
 				os.Exit(1)
 			}
 			keepBranches(args[1:])
+		case "delete":
+			if len(args) < 2 {
+				fmt.Println("Usage: ggg delete [pattern]")
+				os.Exit(1)
+			}
+			deleteBranchesByPattern(args[1])
 		default:
-			fmt.Println("Invalid command. Use 'list' or 'keep'.")
+			fmt.Println("Invalid command. Use 'list', 'keep' or 'delete'.")
 			os.Exit(1)
 		}
 	} else {
-		fmt.Println("Usage: ggg [list|keep]")
+		fmt.Println("Usage: ggg [list|keep|delete]")
 		os.Exit(1)
+	}
+}
+
+func deleteBranchesByPattern(pattern string) {
+	branches, err := listBranches()
+	if err != nil {
+		fmt.Println("Error listing branches:", err)
+		os.Exit(1)
+	}
+
+	for _, branch := range branches {
+		matched, err := filepath.Match(pattern, branch)
+		if err != nil {
+			fmt.Println("Error matching pattern:", err)
+			os.Exit(1)
+		}
+
+		if matched {
+			err := deleteBranch(branch)
+			if err != nil {
+				fmt.Println("Error deleting branch:", err)
+				os.Exit(1)
+			}
+		}
 	}
 }
 
