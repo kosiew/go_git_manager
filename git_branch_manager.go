@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
+const AppName = "ggg"
+
 func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		log.Fatal("Usage: ggg [list|keep|delete]")
+		log.Fatalf("Usage: %s [list|keep|delete]", AppName)
 	}
 
 	switch args[0] {
@@ -21,16 +23,16 @@ func main() {
 		listSortedBranches()
 	case "keep":
 		if len(args) < 2 {
-			log.Fatal("Usage: ggg keep [branches to keep...]")
+			log.Fatalf("Usage: %s keep [branches to keep...]", AppName)
 		}
 		keepBranches(args[1:])
 	case "delete":
 		if len(args) < 2 {
-			log.Fatal("Usage: ggg delete [pattern]")
+			log.Fatalf("Usage: %s delete [pattern]", AppName)
 		}
 		deleteBranchesByPattern(args[1])
 	default:
-		log.Fatal("Invalid command. Use 'list', 'keep' or 'delete'.")
+		log.Fatalf("Invalid command. Use 'list', 'keep' or 'delete'.")
 	}
 }
 
