@@ -36,7 +36,7 @@ func main() {
 
 func confirmDeletion() bool {
 	for {
-		fmt.Println("Type 'yes' to confirm deletion or 'no' to cancel:")
+		fmt.Println("\nType 'yes' to confirm deletion or 'no' to cancel:\n")
 		var input string
 		fmt.Scanln(&input)
 		fmt.Println() // Print a newline
@@ -159,7 +159,7 @@ func deleteBranches(toDelete []string) {
 }
 
 func confirmBranchesToDelete(toDelete []string) bool {
-	fmt.Printf("The following branches match the pattern and will be deleted:\n%s\n", strings.Join(toDelete, "\n"))
+	fmt.Printf("The following branches match the pattern and will be deleted:\n\n%s\n", strings.Join(toDelete, "\n"))
 
 	return confirmDeletion()
 }
