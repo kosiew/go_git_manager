@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -45,20 +44,20 @@ func deleteBranchesByPattern(pattern string) {
 		os.Exit(1)
 	}
 
+	deletedCount := 0
 	for _, branch := range branches {
-		matched, err := filepath.Match(pattern, branch)
-		if err != nil {
-			fmt.Println("Error matching pattern:", err)
-			os.Exit(1)
-		}
-
-		if matched {
+		if strings.HasPrefix(branch, pattern) {
 			err := deleteBranch(branch)
 			if err != nil {
 				fmt.Println("Error deleting branch:", err)
 				os.Exit(1)
 			}
+			deletedCount++
 		}
+	}
+
+	if deletedCount == 0 {
+		fmt.Printf("No branches were deleted that match the pattern: %s\n", pattern)
 	}
 }
 
