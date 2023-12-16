@@ -45,8 +45,20 @@ func deleteBranchesByPattern(pattern string) {
 	}
 
 	deletedCount := 0
+	isWildcard := strings.HasSuffix(pattern, "*")
+	if isWildcard {
+		pattern = strings.TrimSuffix(pattern, "*")
+	}
+
 	for _, branch := range branches {
-		if strings.HasPrefix(branch, pattern) {
+		match := false
+		if isWildcard {
+			match = strings.HasPrefix(branch, pattern)
+		} else {
+			match = branch == pattern
+		}
+
+		if match {
 			err := deleteBranch(branch)
 			if err != nil {
 				fmt.Println("Error deleting branch:", err)
@@ -57,7 +69,11 @@ func deleteBranchesByPattern(pattern string) {
 	}
 
 	if deletedCount == 0 {
-		fmt.Printf("No branches were deleted that match the pattern: %s\n", pattern)
+		if isWildcard {
+			fmt.Printf("No branches were deleted that match the pattern: %s*\n", pattern)
+		} else {
+			fmt.Printf("No branches were deleted that match the pattern: %s\n", pattern)
+		}
 	}
 }
 
