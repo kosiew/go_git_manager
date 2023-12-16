@@ -76,22 +76,17 @@ func keepBranches(branchesToKeep []string) {
 		}
 	}
 
-	fmt.Println("Branches to be deleted:")
-	for _, branch := range branchesToDelete {
-		fmt.Println(branch)
+	confirmAndDeleteBranches(branchesToDelete)
+}
+
+func confirmAndDeleteBranches(branchesToDelete []string) bool {
+	yes := confirmBranchesToDelete(branchesToDelete)
+	if !yes {
+		return true
 	}
 
-	if !confirmDeletion() {
-		os.Exit(0)
-	}
-
-	failed := deleteBranches(branchesToDelete)
-	if len(failed) > 0 {
-		fmt.Println("Failed to delete the following branches:")
-		for _, branch := range failed {
-			fmt.Println(branch)
-		}
-	}
+	_deleteBranches(branchesToDelete)
+	return false
 }
 
 func deleteBranchesByPattern(pattern string) {
@@ -101,7 +96,6 @@ func deleteBranchesByPattern(pattern string) {
 		os.Exit(1)
 	}
 
-	deletedCount := 0
 	isPrefixWildcard := strings.HasPrefix(pattern, "*")
 	isSuffixWildcard := strings.HasSuffix(pattern, "*")
 	if isPrefixWildcard || isSuffixWildcard {
@@ -131,23 +125,29 @@ func deleteBranchesByPattern(pattern string) {
 		return
 	}
 
-	fmt.Printf("The following branches match the pattern and will be deleted:\n%s\n", strings.Join(toDelete, "\n"))
+	confirmAndDeleteBranches(toDelete)
+}
 
-	if !confirmDeletion() {
-		return
-	}
-
+func _deleteBranches(toDelete []string) {
 	failed := deleteBranches(toDelete)
+	deletedCount := len(toDelete) - len(failed)
+
 	if len(failed) > 0 {
 		fmt.Println("Failed to delete the following branches:")
 		for _, branch := range failed {
 			fmt.Println(branch)
 		}
-	} else {
-		deletedCount = len(toDelete)
-		fmt.Printf("%d branches were deleted.\n", deletedCount)
 	}
+
+	fmt.Printf("%d out of %d branches were deleted.\n", deletedCount, len(toDelete))
 }
+
+func confirmBranchesToDelete(toDelete []string) bool {
+	fmt.Printf("The following branches match the pattern and will be deleted:\n%s\n", strings.Join(toDelete, "\n"))
+
+	return confirmDeletion()
+}
+
 func listSortedBranches() {
 	branches, err := listBranches()
 	if err != nil {
