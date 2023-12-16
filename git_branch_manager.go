@@ -51,7 +51,7 @@ func confirmDeletion() bool {
 	}
 }
 
-func deleteBranches(branches []string) []string {
+func _deleteBranches(branches []string) []string {
 	var failed []string
 	for _, branch := range branches {
 		err := deleteBranch(branch)
@@ -63,7 +63,7 @@ func deleteBranches(branches []string) []string {
 }
 
 func keepBranches(branchesToKeep []string) {
-	allBranches, err := listBranches()
+	allBranches, currentBranch, err := listBranches()
 	if err != nil {
 		fmt.Println("Error listing branches:", err)
 		os.Exit(1)
@@ -76,21 +76,36 @@ func keepBranches(branchesToKeep []string) {
 		}
 	}
 
-	confirmAndDeleteBranches(branchesToDelete)
+	confirmAndDeleteBranches(branchesToDelete, currentBranch)
 }
 
-func confirmAndDeleteBranches(branchesToDelete []string) bool {
+func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) bool {
 	yes := confirmBranchesToDelete(branchesToDelete)
 	if !yes {
 		return true
 	}
 
-	_deleteBranches(branchesToDelete)
+	// Filter out the current branch from the branches to delete
+	var filteredBranches []string
+	currentBranchFiltered := false
+	for _, branch := range branchesToDelete {
+		if branch == currentBranch {
+			currentBranchFiltered = true
+		} else {
+			filteredBranches = append(filteredBranches, branch)
+		}
+	}
+
+	if currentBranchFiltered {
+		fmt.Println("The current branch (" + currentBranch + ") was not deleted.")
+	}
+
+	deleteBranches(filteredBranches)
 	return false
 }
 
 func deleteBranchesByPattern(pattern string) {
-	branches, err := listBranches()
+	branches, currentBranch, err := listBranches()
 	if err != nil {
 		fmt.Println("Error listing branches:", err)
 		os.Exit(1)
@@ -125,11 +140,11 @@ func deleteBranchesByPattern(pattern string) {
 		return
 	}
 
-	confirmAndDeleteBranches(toDelete)
+	confirmAndDeleteBranches(toDelete, currentBranch)
 }
 
-func _deleteBranches(toDelete []string) {
-	failed := deleteBranches(toDelete)
+func deleteBranches(toDelete []string) {
+	failed := _deleteBranches(toDelete)
 	deletedCount := len(toDelete) - len(failed)
 
 	if len(failed) > 0 {
@@ -149,7 +164,7 @@ func confirmBranchesToDelete(toDelete []string) bool {
 }
 
 func listSortedBranches() {
-	branches, err := listBranches()
+	branches, _, err := listBranches()
 	if err != nil {
 		fmt.Println("Error listing branches:", err)
 		os.Exit(1)
@@ -161,23 +176,25 @@ func listSortedBranches() {
 	}
 }
 
-func listBranches() ([]string, error) {
+func listBranches() ([]string, string, error) {
 	cmd := exec.Command("git", "branch")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	branches := strings.Split(string(output), "\n")
+	var currentBranch string
 	for i, branch := range branches {
 		branch = strings.TrimSpace(branch)
 		if strings.HasPrefix(branch, "*") {
 			branch = strings.TrimSpace(branch[1:])
+			currentBranch = branch
 		}
 		branches[i] = branch
 	}
 
-	return branches, nil
+	return branches, currentBranch, nil
 }
 
 func contains(slice []string, item string) bool {
