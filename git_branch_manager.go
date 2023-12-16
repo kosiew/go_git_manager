@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"sort"
@@ -11,29 +12,25 @@ import (
 func main() {
 	args := os.Args[1:]
 
-	if len(args) > 0 {
-		switch args[0] {
-		case "list":
-			listSortedBranches()
-		case "keep":
-			if len(args) < 2 {
-				fmt.Println("Usage: ggg keep [branches to keep...]")
-				os.Exit(1)
-			}
-			keepBranches(args[1:])
-		case "delete":
-			if len(args) < 2 {
-				fmt.Println("Usage: ggg delete [pattern]")
-				os.Exit(1)
-			}
-			deleteBranchesByPattern(args[1])
-		default:
-			fmt.Println("Invalid command. Use 'list', 'keep' or 'delete'.")
-			os.Exit(1)
+	if len(args) == 0 {
+		log.Fatal("Usage: ggg [list|keep|delete]")
+	}
+
+	switch args[0] {
+	case "list":
+		listSortedBranches()
+	case "keep":
+		if len(args) < 2 {
+			log.Fatal("Usage: ggg keep [branches to keep...]")
 		}
-	} else {
-		fmt.Println("Usage: ggg [list|keep|delete]")
-		os.Exit(1)
+		keepBranches(args[1:])
+	case "delete":
+		if len(args) < 2 {
+			log.Fatal("Usage: ggg delete [pattern]")
+		}
+		deleteBranchesByPattern(args[1])
+	default:
+		log.Fatal("Invalid command. Use 'list', 'keep' or 'delete'.")
 	}
 }
 
@@ -112,26 +109,24 @@ func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) b
 func deleteBranchesByPattern(pattern string) {
 	branches, currentBranch, err := listBranches()
 	if err != nil {
-		fmt.Println("Error listing branches:", err)
-		os.Exit(1)
+		log.Fatal("Error listing branches:", err)
 	}
 
 	isPrefixWildcard := strings.HasPrefix(pattern, "*")
 	isSuffixWildcard := strings.HasSuffix(pattern, "*")
-	if isPrefixWildcard || isSuffixWildcard {
-		pattern = strings.Trim(pattern, "*")
-	}
+	pattern = strings.Trim(pattern, "*")
 
 	var toDelete []string
 	for _, branch := range branches {
-		match := false
-		if isPrefixWildcard && isSuffixWildcard {
+		var match bool
+		switch {
+		case isPrefixWildcard && isSuffixWildcard:
 			match = strings.Contains(branch, pattern)
-		} else if isPrefixWildcard {
+		case isPrefixWildcard:
 			match = strings.HasSuffix(branch, pattern)
-		} else if isSuffixWildcard {
+		case isSuffixWildcard:
 			match = strings.HasPrefix(branch, pattern)
-		} else {
+		default:
 			match = branch == pattern
 		}
 
@@ -159,7 +154,7 @@ func deleteBranches(toDelete []string) {
 		}
 	}
 
-	fmt.Printf("%d out of %d branches were deleted.\n", deletedCount, len(toDelete))
+	fmt.Printf("\n%d out of %d branches were deleted.\n", deletedCount, len(toDelete))
 }
 
 func confirmBranchesToDelete(toDelete []string) bool {
@@ -203,20 +198,20 @@ func listBranches() ([]string, string, error) {
 }
 
 func contains(slice []string, item string) bool {
-	for _, v := range slice {
-		if v == item {
-			return true
-		}
+	set := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		set[s] = struct{}{}
 	}
-	return false
+
+	_, ok := set[item]
+	return ok
 }
 
 func deleteBranch(branch string) error {
 	cmd := exec.Command("git", "branch", "-D", branch)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		message := fmt.Sprintf("Error deleting branch %s: %s", branch, output)
-		return fmt.Errorf(message)
+		return fmt.Errorf("Error deleting branch %s: %s", branch, output)
 	}
 	fmt.Println("Deleted branch", branch)
 	return nil
