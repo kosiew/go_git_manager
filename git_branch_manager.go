@@ -215,7 +215,9 @@ func deleteBranch(branch string) error {
 	cmd := exec.Command("git", "branch", "-d", branch)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error deleting branch %s: %s", branch, output)
+		message := "Error deleting branch %s: %s", branch, output
+		fmt.Println(message)
+		return fmt.Errorf(message)
 	}
 	fmt.Println("Deleted branch", branch)
 	return nil
