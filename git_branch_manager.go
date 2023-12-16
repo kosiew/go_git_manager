@@ -80,11 +80,6 @@ func keepBranches(branchesToKeep []string) {
 }
 
 func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) bool {
-	yes := confirmBranchesToDelete(branchesToDelete)
-	if !yes {
-		return true
-	}
-
 	// Filter out the current branch from the branches to delete
 	var filteredBranches []string
 	currentBranchFiltered := false
@@ -100,8 +95,18 @@ func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) b
 		fmt.Println("The current branch (" + currentBranch + ") was not deleted.")
 	}
 
+	if len(filteredBranches) == 0 {
+		fmt.Println("No branches to delete.")
+		return false
+	}
+
+	yes := confirmBranchesToDelete(filteredBranches)
+	if !yes {
+		return false
+	}
+
 	deleteBranches(filteredBranches)
-	return false
+	return true
 }
 
 func deleteBranchesByPattern(pattern string) {
