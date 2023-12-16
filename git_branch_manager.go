@@ -39,6 +39,7 @@ func confirmDeletion() bool {
 		fmt.Println("Type 'yes' to confirm deletion or 'no' to cancel:")
 		var input string
 		fmt.Scanln(&input)
+		fmt.Println() // Print a newline
 		if input == "yes" {
 			return true
 		} else if input == "no" {
