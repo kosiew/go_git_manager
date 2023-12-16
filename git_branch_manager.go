@@ -51,12 +51,12 @@ func confirmDeletion() bool {
 	}
 }
 
-func _deleteBranches(branches []string) []string {
-	var failed []string
+func _deleteBranches(branches []string) map[string]string {
+	failed := make(map[string]string)
 	for _, branch := range branches {
 		err := deleteBranch(branch)
 		if err != nil {
-			failed = append(failed, branch)
+			failed[branch] = err.Error()
 		}
 	}
 	return failed
@@ -153,9 +153,9 @@ func deleteBranches(toDelete []string) {
 	deletedCount := len(toDelete) - len(failed)
 
 	if len(failed) > 0 {
-		fmt.Println("Failed to delete the following branches:")
-		for _, branch := range failed {
-			fmt.Println(branch)
+		fmt.Println("\n\nFailed to delete the following branches:")
+		for branch, errMsg := range failed {
+			fmt.Printf("Branch: %s, Error: %s\n", branch, errMsg)
 		}
 	}
 
@@ -215,8 +215,7 @@ func deleteBranch(branch string) error {
 	cmd := exec.Command("git", "branch", "-d", branch)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		message := "Error deleting branch %s: %s", branch, output
-		fmt.Println(message)
+		message := fmt.Sprintf("Error deleting branch %s: %s", branch, output)
 		return fmt.Errorf(message)
 	}
 	fmt.Println("Deleted branch", branch)
