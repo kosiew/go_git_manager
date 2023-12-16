@@ -92,7 +92,7 @@ func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) b
 	}
 
 	if currentBranchFiltered {
-		fmt.Println("The current branch (" + currentBranch + ") was not deleted.")
+		fmt.Println("The current branch (" + currentBranch + ") will not be deleted.")
 	}
 
 	if len(filteredBranches) == 0 {
@@ -212,7 +212,7 @@ func contains(slice []string, item string) bool {
 }
 
 func deleteBranch(branch string) error {
-	cmd := exec.Command("git", "branch", "-d", branch)
+	cmd := exec.Command("git", "branch", "-D", branch)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		message := fmt.Sprintf("Error deleting branch %s: %s", branch, output)
