@@ -7,25 +7,59 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
-const AppName = "gg"
+const (
+	AppName = "gbm"
+)
+
+var (
+	title  func(string, ...interface{})
+	info   func(string, ...interface{})
+	warn   func(string, ...interface{})
+	status func(string, ...interface{})
+)
+
+func init() {
+	t := color.New(color.FgGreen, color.Bold).PrintfFunc()
+	title = func(format string, a ...interface{}) {
+		t("\n"+format+"\n", a...)
+	}
+
+	s := color.New(color.FgBlue, color.Bold).PrintfFunc()
+	status = func(format string, a ...interface{}) {
+		s("\n"+format+"\n\n", a...)
+	}
+
+	i := color.New(color.FgCyan).PrintfFunc()
+	info = func(format string, a ...interface{}) {
+		i(format+"\n", a...)
+	}
+
+	w := color.New(color.FgYellow, color.Bold).PrintfFunc()
+	warn = func(format string, a ...interface{}) {
+		w(format+"\n", a...)
+	}
+}
 
 func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		log.Fatalf("Usage: %s [list|keep|delete|Delete]", AppName)
+		log.Fatalf("Usage: %s [list|keep|Keep|delete|Delete]", AppName)
 	}
 
 	switch args[0] {
 	case "list":
 		listSortedBranches()
-	case "keep":
+	case "keep", "Keep":
 		if len(args) < 2 {
-			log.Fatalf("Usage: %s keep [branches to keep...]", AppName)
+			log.Fatalf("Usage: %s keep|Keep [branches to keep...]", AppName)
 		}
-		keepBranches(args[1:])
+		force := args[0] == "Keep"
+		keepBranches(args[1:], force)
 	case "delete", "Delete":
 		if len(args) < 2 {
 			log.Fatalf("Usage: %s delete|Delete [pattern]", AppName)
@@ -33,20 +67,20 @@ func main() {
 		force := args[0] == "Delete"
 		deleteBranchesByPattern(args[1], force)
 	default:
-		log.Fatalf("Invalid command. Use 'list', 'keep' or 'delete'.")
+		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete' or 'Delete'.")
 	}
 }
 
 func confirmDeletion() bool {
 	for {
-		fmt.Println("\nType 'yes' to confirm deletion or 'no' to cancel:\n")
+		warn("\nType 'yes' to confirm deletion or 'no' to cancel:\n")
 		var input string
 		fmt.Scanln(&input)
 		fmt.Println() // Print a newline
 		if input == "yes" {
 			return true
 		} else if input == "no" {
-			fmt.Println("Deletion cancelled")
+			status("Deletion cancelled")
 			return false
 		}
 	}
@@ -54,6 +88,12 @@ func confirmDeletion() bool {
 
 func _deleteBranches(branches []string, force bool) map[string]string {
 	failed := make(map[string]string)
+	branchCount := len(branches)
+	if branchCount == 1 {
+		title("Deleting branch %s...", branches[0])
+	} else {
+		title("Deleting %d branches...", branchCount)
+	}
 	for _, branch := range branches {
 		err := deleteBranch(branch, force)
 		if err != nil {
@@ -63,10 +103,10 @@ func _deleteBranches(branches []string, force bool) map[string]string {
 	return failed
 }
 
-func keepBranches(branchesToKeep []string) {
+func keepBranches(branchesToKeep []string, force bool) {
 	allBranches, currentBranch, err := listBranches()
 	if err != nil {
-		fmt.Println("Error listing branches:", err)
+		warn("Error listing branches:", err)
 		os.Exit(1)
 	}
 
@@ -77,7 +117,7 @@ func keepBranches(branchesToKeep []string) {
 		}
 	}
 
-	confirmAndDeleteBranches(branchesToDelete, currentBranch)
+	confirmAndDeleteBranches(branchesToDelete, currentBranch, force)
 }
 
 func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string, force bool) bool {
@@ -85,7 +125,7 @@ func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string, f
 	filteredBranches := filterCurrentBranch(branchesToDelete, currentBranch)
 
 	if len(filteredBranches) == 0 {
-		fmt.Println("No branches to delete.")
+		status("No branches to delete.")
 		return false
 	}
 
@@ -110,7 +150,7 @@ func filterCurrentBranch(branchesToDelete []string, currentBranch string) []stri
 	}
 
 	if currentBranchFiltered {
-		fmt.Println("The current branch (" + currentBranch + ") will not be deleted.")
+		status("Current branch (" + currentBranch + ") cannot be deleted.")
 	}
 
 	return filteredBranches
@@ -146,7 +186,7 @@ func deleteBranchesByPattern(pattern string, force bool) {
 	}
 
 	if len(toDelete) == 0 {
-		fmt.Println("No branches match the given pattern.")
+		status("No branches match the given pattern.")
 		return
 	}
 
@@ -158,31 +198,58 @@ func deleteBranches(toDelete []string, force bool) {
 	deletedCount := len(toDelete) - len(failed)
 
 	if len(failed) > 0 {
-		fmt.Println("\n\nFailed to delete the following branches:")
+		status("\n\nFailed to delete the following branches:")
 		for branch, errMsg := range failed {
-			fmt.Printf("Branch: %s, Error: %s\n", branch, errMsg)
+			warn("Branch: %s - Error: %s", branch, errMsg)
 		}
 	}
 
-	fmt.Printf("\n%d out of %d branches were deleted.\n", deletedCount, len(toDelete))
+	deletedCountStr := "branches"
+	toDeleteStr := "branches"
+
+	if deletedCount == 1 {
+		deletedCountStr = "branch"
+	}
+
+	if len(toDelete) == 1 {
+		toDeleteStr = "branch"
+	}
+
+	status("\n%d out of %d %s were deleted.\n", deletedCount, len(toDelete), toDeleteStr)
+	failDeleteCount := len(toDelete) - deletedCount
+	if failDeleteCount > 0 {
+		warn("%d %s were not deleted due to errors.\n", failDeleteCount, deletedCountStr)
+	}
 }
 
 func confirmBranchesToDelete(toDelete []string) bool {
-	fmt.Printf("The following branches match the pattern and will be deleted:\n\n%s\n", strings.Join(toDelete, "\n"))
+	if len(toDelete) == 1 {
+		title("The following branch matches the pattern and will be deleted:")
+	} else {
+		title("The following branches match the pattern and will be deleted:")
+	}
 
+	for _, branch := range toDelete {
+		info(branch)
+	}
 	return confirmDeletion()
 }
 
 func listSortedBranches() {
 	branches, _, err := listBranches()
 	if err != nil {
-		fmt.Println("Error listing branches:", err)
+		warn("Error listing branches: %s", err)
 		os.Exit(1)
 	}
 
 	sort.Strings(branches)
+	titleString := "Branches"
+	if len(branches) == 1 {
+		titleString = "Branch"
+	}
+	title(titleString)
 	for _, branch := range branches {
-		fmt.Println(branch)
+		info(branch)
 	}
 }
 
@@ -226,6 +293,6 @@ func deleteBranch(branch string, force bool) error {
 	if err != nil {
 		return fmt.Errorf("Error deleting branch %s: %s", branch, output)
 	}
-	fmt.Println("Deleted branch", branch)
+	info("Deleted branch %s", branch)
 	return nil
 }
