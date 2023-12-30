@@ -16,13 +16,16 @@ const (
 )
 
 var (
-	title  func(string, ...interface{})
-	info   func(string, ...interface{})
-	warn   func(string, ...interface{})
-	status func(string, ...interface{})
+	title     func(string, ...interface{})
+	info      func(string, ...interface{})
+	warn      func(string, ...interface{})
+	status    func(string, ...interface{})
+	lastColor color.Attribute
 )
 
 func init() {
+	cyan := color.New(color.FgCyan).PrintfFunc()
+	hiCyan := color.New(color.FgHiCyan).PrintfFunc()
 	t := color.New(color.FgGreen, color.Bold).PrintfFunc()
 	title = func(format string, a ...interface{}) {
 		t("\n"+format+"\n", a...)
@@ -33,9 +36,14 @@ func init() {
 		s("\n"+format+"\n\n", a...)
 	}
 
-	i := color.New(color.FgCyan).PrintfFunc()
 	info = func(format string, a ...interface{}) {
-		i(format+"\n", a...)
+		if lastColor == color.FgCyan {
+			hiCyan(format+"\n", a...)
+			lastColor = color.FgHiCyan
+		} else {
+			cyan(format+"\n", a...)
+			lastColor = color.FgCyan
+		}
 	}
 
 	w := color.New(color.FgYellow, color.Bold).PrintfFunc()
@@ -248,8 +256,8 @@ func listSortedBranches() {
 		titleString = "Branch"
 	}
 	title(titleString)
-	for _, branch := range branches {
-		info(branch)
+	for i, branch := range branches {
+		info("%2d. %s", i+1, branch)
 	}
 }
 
@@ -262,16 +270,20 @@ func listBranches() ([]string, string, error) {
 
 	branches := strings.Split(string(output), "\n")
 	var currentBranch string
-	for i, branch := range branches {
+	var nonEmptyBranches []string
+
+	for _, branch := range branches {
 		branch = strings.TrimSpace(branch)
 		if strings.HasPrefix(branch, "*") {
 			branch = strings.TrimSpace(branch[1:])
 			currentBranch = branch
 		}
-		branches[i] = branch
+		if branch != "" {
+			nonEmptyBranches = append(nonEmptyBranches, branch)
+		}
 	}
 
-	return branches, currentBranch, nil
+	return nonEmptyBranches, currentBranch, nil
 }
 
 func contains(slice []string, item string) bool {
