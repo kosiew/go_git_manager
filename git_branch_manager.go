@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-const AppName = "ggg"
+const AppName = "gg"
 
 func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		log.Fatalf("Usage: %s [list|keep|delete]", AppName)
+		log.Fatalf("Usage: %s [list|keep|delete|Delete]", AppName)
 	}
 
 	switch args[0] {
@@ -26,11 +26,12 @@ func main() {
 			log.Fatalf("Usage: %s keep [branches to keep...]", AppName)
 		}
 		keepBranches(args[1:])
-	case "delete":
+	case "delete", "Delete":
 		if len(args) < 2 {
-			log.Fatalf("Usage: %s delete [pattern]", AppName)
+			log.Fatalf("Usage: %s delete|Delete [pattern]", AppName)
 		}
-		deleteBranchesByPattern(args[1])
+		force := args[0] == "Delete"
+		deleteBranchesByPattern(args[1], force)
 	default:
 		log.Fatalf("Invalid command. Use 'list', 'keep' or 'delete'.")
 	}
@@ -51,10 +52,10 @@ func confirmDeletion() bool {
 	}
 }
 
-func _deleteBranches(branches []string) map[string]string {
+func _deleteBranches(branches []string, force bool) map[string]string {
 	failed := make(map[string]string)
 	for _, branch := range branches {
-		err := deleteBranch(branch)
+		err := deleteBranch(branch, force)
 		if err != nil {
 			failed[branch] = err.Error()
 		}
@@ -79,7 +80,7 @@ func keepBranches(branchesToKeep []string) {
 	confirmAndDeleteBranches(branchesToDelete, currentBranch)
 }
 
-func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) bool {
+func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string, force bool) bool {
 	// Filter out the current branch from the branches to delete
 	filteredBranches := filterCurrentBranch(branchesToDelete, currentBranch)
 
@@ -93,7 +94,7 @@ func confirmAndDeleteBranches(branchesToDelete []string, currentBranch string) b
 		return false
 	}
 
-	deleteBranches(filteredBranches)
+	deleteBranches(filteredBranches, force)
 	return true
 }
 
@@ -115,7 +116,7 @@ func filterCurrentBranch(branchesToDelete []string, currentBranch string) []stri
 	return filteredBranches
 }
 
-func deleteBranchesByPattern(pattern string) {
+func deleteBranchesByPattern(pattern string, force bool) {
 	branches, currentBranch, err := listBranches()
 	if err != nil {
 		log.Fatal("Error listing branches:", err)
@@ -149,11 +150,11 @@ func deleteBranchesByPattern(pattern string) {
 		return
 	}
 
-	confirmAndDeleteBranches(toDelete, currentBranch)
+	confirmAndDeleteBranches(toDelete, currentBranch, force)
 }
 
-func deleteBranches(toDelete []string) {
-	failed := _deleteBranches(toDelete)
+func deleteBranches(toDelete []string, force bool) {
+	failed := _deleteBranches(toDelete, force)
 	deletedCount := len(toDelete) - len(failed)
 
 	if len(failed) > 0 {
@@ -216,8 +217,11 @@ func contains(slice []string, item string) bool {
 	return ok
 }
 
-func deleteBranch(branch string) error {
-	cmd := exec.Command("git", "branch", "-D", branch)
+func deleteBranch(branch string, force bool) error {
+	cmd := exec.Command("git", "branch", "-d", branch)
+	if force {
+		cmd = exec.Command("git", "branch", "-D", branch)
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Error deleting branch %s: %s", branch, output)
