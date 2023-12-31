@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/speaker"
 	"github.com/fatih/color"
 )
 
@@ -22,6 +26,13 @@ var (
 	status    func(string, ...interface{})
 	lastColor color.Attribute
 )
+
+// SineWave generates a sine wave of a specified frequency and sample rate.
+type SineWave struct {
+	freq       float64
+	sampleRate beep.SampleRate
+	t          float64
+}
 
 func init() {
 	cyan := color.New(color.FgCyan).PrintfFunc()
@@ -77,6 +88,45 @@ func main() {
 	default:
 		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete' or 'Delete'.")
 	}
+}
+
+func NewSineWave(freq float64, sampleRate beep.SampleRate) *SineWave {
+	return &SineWave{freq: freq, sampleRate: sampleRate}
+}
+
+func (s *SineWave) Stream(samples [][2]float64) (n int, ok bool) {
+	for i := range samples {
+		phase := s.t * 2 * math.Pi * s.freq
+		sample := float64(math.Sin(phase))
+		samples[i][0] = sample
+		samples[i][1] = sample
+		s.t += 1.0 / float64(s.sampleRate)
+	}
+	return len(samples), true
+}
+
+func (s *SineWave) Err() error {
+	return nil
+}
+
+func playBeepSound() {
+
+	const sampleRate = 44100
+	const freq = 440.0 // Frequency of A4
+	const duration = 1 * time.Second
+
+	sine := NewSineWave(freq, sampleRate)
+	buffer := beep.NewBuffer(beep.Format{SampleRate: sampleRate, NumChannels: 2, Precision: 2})
+	buffer.Append(sine)
+	buffer = buffer.Slice(0, int(float64(sampleRate)*duration.Seconds()))
+
+	speaker.Init(sampleRate, sampleRate.N(time.Second/10))
+	done := make(chan bool)
+	speaker.Play(beep.Seq(buffer.Streamer(0, buffer.Len()), beep.Callback(func() {
+		done <- true
+	})))
+
+	<-done
 }
 
 func confirmDeletion() bool {
