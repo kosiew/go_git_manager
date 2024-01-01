@@ -230,6 +230,12 @@ func deleteBranches(toDelete []string, force bool) {
 	}
 }
 
+func infoBranches(branches []string) {
+	for i, branch := range branches {
+		info("%2d. %s", i+1, branch)
+	}
+}
+
 func confirmBranchesToDelete(toDelete []string) bool {
 	if len(toDelete) == 1 {
 		title("The following branch matches the pattern and will be deleted:")
@@ -237,9 +243,8 @@ func confirmBranchesToDelete(toDelete []string) bool {
 		title("The following branches match the pattern and will be deleted:")
 	}
 
-	for _, branch := range toDelete {
-		info(branch)
-	}
+	infoBranches(toDelete)
+
 	return confirmDeletion()
 }
 
@@ -256,9 +261,7 @@ func listSortedBranches() {
 		titleString = "Branch"
 	}
 	title(titleString)
-	for i, branch := range branches {
-		info("%2d. %s", i+1, branch)
-	}
+	infoBranches(branches)
 }
 
 func listBranches() ([]string, string, error) {
