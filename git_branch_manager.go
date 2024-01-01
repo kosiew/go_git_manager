@@ -223,7 +223,7 @@ func deleteBranches(toDelete []string, force bool) {
 		toDeleteStr = "branch"
 	}
 
-	status("\n%d out of %d %s were deleted.\n", deletedCount, len(toDelete), toDeleteStr)
+	status("\n%d out of %d %s deleted.\n", deletedCount, len(toDelete), toDeleteStr)
 	failDeleteCount := len(toDelete) - deletedCount
 	if failDeleteCount > 0 {
 		warn("%d %s were not deleted due to errors.\n", failDeleteCount, deletedCountStr)
