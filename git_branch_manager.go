@@ -56,10 +56,14 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		log.Fatalf("Usage: %s [list|keep|Keep|delete|Delete]", AppName)
+		showHelp()
+		os.Exit(0)
 	}
 
 	switch args[0] {
+	case "--help", "-h":
+		showHelp()
+		return
 	case "list":
 		listSortedBranches()
 	case "keep", "Keep":
@@ -75,7 +79,7 @@ func main() {
 		force := args[0] == "Delete"
 		deleteBranchesByPattern(args[1], force)
 	default:
-		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete' or 'Delete'.")
+		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete', 'Delete' or '--help'.")
 	}
 }
 
@@ -310,4 +314,57 @@ func deleteBranch(branch string, force bool) error {
 	}
 	info("Deleted branch %s", branch)
 	return nil
+}
+
+func showHelp() {
+	title("%s - Git Branch Manager", AppName)
+
+	fmt.Println("A tool for managing Git branches efficiently.")
+	fmt.Println("")
+
+	status("USAGE:")
+	fmt.Println("  " + AppName + " [command] [options]")
+
+	status("COMMANDS:")
+
+	t := color.New(color.FgGreen).PrintfFunc()
+	t("  list\n")
+	fmt.Println("      List all Git branches in alphabetical order")
+	fmt.Println("")
+
+	t("  keep <branch1> [branch2] ...\n")
+	fmt.Println("      Keep only the specified branches and delete all others")
+	fmt.Println("      Requires confirmation before deletion")
+	fmt.Println("")
+
+	t("  Keep <branch1> [branch2] ...\n")
+	fmt.Println("      Same as keep, but forces deletion with -D flag")
+	fmt.Println("")
+
+	t("  delete <pattern>\n")
+	fmt.Println("      Delete branches matching the specified pattern")
+	fmt.Println("      Patterns can use wildcards: *test, test*, or *test*")
+	fmt.Println("      Requires confirmation before deletion")
+	fmt.Println("")
+
+	t("  Delete <pattern>\n")
+	fmt.Println("      Same as delete, but forces deletion with -D flag")
+	fmt.Println("")
+
+	status("OPTIONS:")
+	t("  --help, -h\n")
+	fmt.Println("      Show this help information")
+
+	status("EXAMPLES:")
+	e := color.New(color.FgCyan).PrintfFunc()
+	e("  %s list\n", AppName)
+	fmt.Println("      Lists all branches")
+	fmt.Println("")
+
+	e("  %s delete test*\n", AppName)
+	fmt.Println("      Deletes all branches starting with 'test'")
+	fmt.Println("")
+
+	e("  %s keep main development\n", AppName)
+	fmt.Println("      Keeps only the 'main' and 'development' branches, deleting all others")
 }
