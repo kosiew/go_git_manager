@@ -78,6 +78,7 @@ func main() {
 		}
 		force := args[0] == "Delete"
 		deleteBranchesByPattern(args[1], force)
+		listSortedBranches()
 	default:
 		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete', 'Delete' or '--help'.")
 	}
