@@ -66,6 +66,20 @@ func main() {
 		return
 	case "list":
 		listSortedBranches()
+	case "complete":
+		if len(args) < 2 {
+			log.Fatalf("The 'complete' command requires a shell type argument (bash or zsh)")
+		}
+		generateCompletionScript(args[1])
+	case "complete-branches":
+		// Used by shell completion to get branch names
+		branches, _, err := listBranches()
+		if err != nil {
+			os.Exit(1)
+		}
+		for _, branch := range branches {
+			fmt.Println(branch)
+		}
 	case "keep", "Keep":
 		if len(args) < 2 {
 			log.Fatalf("Usage: %s keep|Keep [branches to keep...]", AppName)
@@ -80,7 +94,7 @@ func main() {
 		deleteBranchesByPattern(args[1], force)
 		listSortedBranches()
 	default:
-		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete', 'Delete' or '--help'.")
+		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete', 'Delete', 'complete', '--help', or '-h'.")
 	}
 }
 
@@ -317,6 +331,96 @@ func deleteBranch(branch string, force bool) error {
 	return nil
 }
 
+func generateCompletionScript(shell string) {
+	switch shell {
+	case "bash":
+		bashCompletionScript()
+	case "zsh":
+		zshCompletionScript()
+	default:
+		log.Fatalf("Unsupported shell: %s. Supported shells are 'bash' and 'zsh'.", shell)
+	}
+}
+
+func bashCompletionScript() {
+	fmt.Println(`
+# Bash completion script for gbm
+_gbm_completion() {
+    local cur prev words cword
+    _get_comp_words_by_ref -n : cur prev words cword
+
+    case "$prev" in
+        delete|Delete)
+            COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+            return 0
+            ;;
+        keep|Keep)
+            COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+            return 0
+            ;;
+        *)
+            case "${words[1]}" in
+                keep|Keep)
+                    COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+                    return 0
+                    ;;
+                *)
+                    local commands="list keep Keep delete Delete complete --help -h"
+                    COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+                    return 0
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+complete -F _gbm_completion gbm
+`)
+}
+
+func zshCompletionScript() {
+	fmt.Println(`
+#compdef gbm
+
+_gbm() {
+    local state line
+    typeset -A opt_args
+
+    _arguments \
+        '1: :->command' \
+        '*: :->args'
+
+    case $state in
+        command)
+            _values "command" \
+                "list[List all Git branches]" \
+                "keep[Keep only specified branches]" \
+                "Keep[Force keep only specified branches]" \
+                "delete[Delete branches matching pattern]" \
+                "Delete[Force delete branches matching pattern]" \
+                "complete[Generate shell completion script]" \
+                "--help[Show help information]" \
+                "-h[Show help information]"
+            ;;
+        args)
+            case $line[1] in
+                delete|Delete|keep|Keep)
+                    local branches
+                    branches=(${(f)"$(gbm complete-branches)"})
+                    _describe -t branches "Git branches" branches
+                    ;;
+                complete)
+                    _values "shell" "bash" "zsh"
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_gbm
+`)
+}
+
 func showHelp() {
 	title("%s - Git Branch Manager", AppName)
 
@@ -352,6 +456,10 @@ func showHelp() {
 	fmt.Println("      Same as delete, but forces deletion with -D flag")
 	fmt.Println("")
 
+	t("  complete <shell>\n")
+	fmt.Println("      Generate shell completion script (bash or zsh)")
+	fmt.Println("")
+
 	status("OPTIONS:")
 	t("  --help, -h\n")
 	fmt.Println("      Show this help information")
@@ -368,4 +476,16 @@ func showHelp() {
 
 	e("  %s keep main development\n", AppName)
 	fmt.Println("      Keeps only the 'main' and 'development' branches, deleting all others")
+	fmt.Println("")
+
+	status("SHELL COMPLETION:")
+	fmt.Println("  To enable branch autocompletion, add one of these lines to your shell config file:")
+	fmt.Println("")
+	fmt.Println("  For bash, add this to your ~/.bashrc file:")
+	e("  source <(%s complete bash)\n", AppName)
+	fmt.Println("")
+	fmt.Println("  For zsh, add this to your ~/.zshrc file:")
+	e("  source <(%s complete zsh)\n", AppName)
+	fmt.Println("")
+	fmt.Println("  After adding the line, restart your terminal or run 'source ~/.bashrc' or 'source ~/.zshrc'")
 }
