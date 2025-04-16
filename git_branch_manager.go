@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	AppName = "gbm"
+	AppName = "ggbm"
 )
 
 var (
