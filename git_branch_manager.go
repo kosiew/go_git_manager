@@ -361,32 +361,32 @@ func generateCompletionFile(shell, outputPath string) {
 	switch shell {
 	case "bash":
 		file.WriteString(`
-# Direct gbm completion for bash
+# Direct ggm completion for bash
 # This completion script uses direct git branch commands for reliable completion
 
 # Helper function to get branches without the '*' marker
-__gbm_get_branches() {
+__ggm_get_branches() {
     git branch 2>/dev/null | sed 's/^[ *]*//'
 }
 
 # Main completion function
-_gbm_complete() {
+_ggm_complete() {
     local cur prev words cword
     _init_completion || return
 
     # Debug line to help troubleshoot
-    # echo "gbm completion: prev=$prev, cur=$cur" >&2
+    # echo "ggm completion: prev=$prev, cur=$cur" >&2
 
     case $prev in
         delete|Delete|keep|Keep)
             # Complete with branch names
-            COMPREPLY=( $(compgen -W "$(__gbm_get_branches)" -- "$cur") )
+            COMPREPLY=( $(compgen -W "$(__ggm_get_branches)" -- "$cur") )
             return 0
             ;;
         *)
             # If we're at a position after keep/Keep, still complete branches
             if [[ ${words[1]} == "keep" || ${words[1]} == "Keep" ]]; then
-                COMPREPLY=( $(compgen -W "$(__gbm_get_branches)" -- "$cur") )
+                COMPREPLY=( $(compgen -W "$(__ggm_get_branches)" -- "$cur") )
                 return 0
             fi
             
@@ -399,23 +399,23 @@ _gbm_complete() {
 }
 
 # Register the completion function
-complete -F _gbm_complete gbm
+complete -F _ggm_complete ggm
 `)
 	case "zsh":
 		file.WriteString(`
-#compdef gbm
-# Direct zsh completion for gbm that bypasses the complex compdef system
+#compdef ggm
+# Direct zsh completion for ggm that bypasses the complex compdef system
 
 # This completion script will be sourced directly by the user's .zshrc
-# and provides natural tab completion for gbm commands
+# and provides natural tab completion for ggm commands
 
 # Helper function to list branches
-__gbm_branches() {
+__ggm_branches() {
     git branch 2>/dev/null | sed 's/^[ *]//'
 }
 
-# Simple completion function for gbm
-_gbm() {
+# Simple completion function for ggm
+_ggm() {
     local -a commands
     commands=(
         "list:List all Git branches" 
@@ -429,7 +429,7 @@ _gbm() {
 
     # Complete the main command
     if [[ $CURRENT -eq 2 ]]; then
-        _describe "gbm command" commands
+        _describe "ggm command" commands
         return
     fi
 
@@ -457,7 +457,7 @@ _gbm() {
 }
 
 # Register completion
-compdef _gbm gbm
+compdef _ggm ggm
 `)
 	default:
 		log.Fatalf("Unsupported shell: %s. Supported shells are 'bash' and 'zsh'.", shell)
@@ -469,7 +469,7 @@ compdef _gbm gbm
 	if err == nil {
 		defer installScript.Close()
 		installScript.WriteString(fmt.Sprintf(`#!/bin/sh
-# Installer script for gbm completion
+# Installer script for ggm completion
 
 # Determine shell type
 SHELL_TYPE=$(basename "$SHELL")
@@ -489,7 +489,7 @@ fi
 if grep -q "source.*%s" "$CONFIG_FILE"; then
     echo "Completion already installed in $CONFIG_FILE"
 else
-    echo "# GBM completion" >> "$CONFIG_FILE"
+    echo "# ggm completion" >> "$CONFIG_FILE"
     echo "source \"%s\"" >> "$CONFIG_FILE"
     echo "Added completion to $CONFIG_FILE"
 fi
@@ -509,8 +509,8 @@ echo "You need to restart your shell or run: source \"$COMPLETION_FILE\""
 
 func bashCompletionScript() {
 	fmt.Println(`
-# Bash completion script for gbm
-_gbm_completion() {
+# Bash completion script for ggm
+_ggm_completion() {
     local cur prev words cword
     _get_comp_words_by_ref -n : cur prev words cword
 
@@ -519,19 +519,19 @@ _gbm_completion() {
     case "$prev" in
         delete|Delete)
             echo "==> Getting branches for delete command" >&2
-            COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+            COMPREPLY=( $(compgen -W "$(ggm complete-branches)" -- "$cur") )
             return 0
             ;;
         keep|Keep)
             echo "==> Getting branches for keep command" >&2
-            COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+            COMPREPLY=( $(compgen -W "$(ggm complete-branches)" -- "$cur") )
             return 0
             ;;
         *)
             case "${words[1]}" in
                 keep|Keep)
                     echo "==> Getting branches for keep continuation" >&2
-                    COMPREPLY=( $(compgen -W "$(gbm complete-branches)" -- "$cur") )
+                    COMPREPLY=( $(compgen -W "$(ggm complete-branches)" -- "$cur") )
                     return 0
                     ;;
                 *)
@@ -545,15 +545,15 @@ _gbm_completion() {
     esac
 }
 
-complete -F _gbm_completion gbm
+complete -F _ggm_completion ggm
 `)
 }
 
 func zshCompletionScript() {
 	fmt.Println(`
-#compdef gbm
+#compdef ggm
 
-_gbm_completion() {
+_ggm_completion() {
     local -a commands branches
     commands=(
         "list:List all Git branches"
@@ -570,14 +570,14 @@ _gbm_completion() {
 
     case $state in
         command)
-            _describe -t commands "gbm commands" commands
+            _describe -t commands "ggm commands" commands
             ;;
         argument)
             case $words[2] in
                 delete|Delete|keep|Keep)
                     echo "==> Fetching branches for completion" >&2
                     # Use raw command to get branches to avoid nested completion issues
-                    branches=($(gbm complete-branches))
+                    branches=($(ggm complete-branches))
                     echo "==> Found ${#branches} branches" >&2
                     compadd "$@" -- ${branches[@]}
                     ;;
@@ -589,7 +589,7 @@ _gbm_completion() {
     esac
 }
 
-compdef _gbm_completion gbm
+compdef _ggm_completion ggm
 `)
 }
 
@@ -658,13 +658,13 @@ func showHelp() {
 	fmt.Println("  To enable branch autocompletion:")
 	fmt.Println("")
 	fmt.Println("  Option 1: Generate and install completion (recommended):")
-	e("  %s generate-completion bash|zsh ~/.gbm-completion.sh\n", AppName)
+	e("  %s generate-completion bash|zsh ~/.ggm-completion.sh\n", AppName)
 	fmt.Println("  Then run the installer script:")
-	e("  sh ~/.gbm-completion.install.sh\n")
+	e("  sh ~/.ggm-completion.install.sh\n")
 	fmt.Println("")
 	fmt.Println("  Option 2: Manual installation:")
 	fmt.Println("  Add this to your shell config (~/.bashrc or ~/.zshrc):")
-	e("  source ~/.gbm-completion.sh\n")
+	e("  source ~/.ggm-completion.sh\n")
 	fmt.Println("")
 	fmt.Println("  After installation, restart your terminal or source your config file")
 }
