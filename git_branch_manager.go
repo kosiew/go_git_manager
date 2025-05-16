@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -97,10 +98,16 @@ func main() {
 		keepBranches(args[1:], force)
 	case "delete", "Delete":
 		if len(args) < 2 {
-			log.Fatalf("Usage: %s delete|Delete [pattern]", AppName)
+			log.Fatalf("Usage: %s delete|Delete [pattern or indexes]", AppName)
 		}
 		force := args[0] == "Delete"
-		deleteBranchesByPattern(args[1], force)
+		
+		// Check if the argument is an index specification
+		if isIndexSpec(args[1]) {
+			deleteBranchesByIndexes(args[1], force)
+		} else {
+			deleteBranchesByPattern(args[1], force)
+		}
 		listSortedBranches()
 	default:
 		log.Fatalf("Invalid command. Use 'list', 'keep', 'Keep', 'delete', 'Delete', 'complete', 'generate-completion', '--help', or '-h'.")
@@ -593,6 +600,96 @@ compdef _ggm_completion ggm
 `)
 }
 
+// isIndexSpec checks if the input string is an index specification (number, comma-separated numbers, or ranges)
+func isIndexSpec(input string) bool {
+	// Remove all digits, commas, dashes, and spaces
+	cleaned := strings.Map(func(r rune) rune {
+		if strings.ContainsRune("0123456789,-", r) {
+			return r
+		}
+		return -1
+	}, input)
+	
+	// If after cleaning we have the same length, it's an index spec
+	return len(cleaned) == len(input) && len(input) > 0
+}
+
+// deleteBranchesByIndexes handles deletion by index numbers
+func deleteBranchesByIndexes(indexSpec string, force bool) {
+	branches, currentBranch, err := listBranches()
+	if err != nil {
+		log.Fatal("Error listing branches:", err)
+	}
+	
+	// Sort branches to ensure indexes match the list command output
+	sort.Strings(branches)
+	
+	// Parse index specifications (can be single numbers or ranges like "1-4")
+	var selectedBranches []string
+	specs := strings.Split(indexSpec, ",")
+	
+	for _, spec := range specs {
+		spec = strings.TrimSpace(spec)
+		if spec == "" {
+			continue
+		}
+		
+		if strings.Contains(spec, "-") {
+			// Handle range (e.g., "1-4")
+			rangeParts := strings.Split(spec, "-")
+			if len(rangeParts) != 2 {
+				warn("Invalid range format: %s. Expected format: start-end", spec)
+				continue
+			}
+			
+			start, startErr := strconv.Atoi(strings.TrimSpace(rangeParts[0]))
+			end, endErr := strconv.Atoi(strings.TrimSpace(rangeParts[1]))
+			
+			if startErr != nil || endErr != nil {
+				warn("Invalid range: %s. Both start and end must be numbers.", spec)
+				continue
+			}
+			
+			// Adjust to 0-based indexing
+			start--
+			end--
+			
+			if start < 0 || end >= len(branches) || start > end {
+				warn("Range %s out of bounds. Valid range: 1-%d", spec, len(branches))
+				continue
+			}
+			
+			for i := start; i <= end; i++ {
+				selectedBranches = append(selectedBranches, branches[i])
+			}
+		} else {
+			// Handle single index
+			idx, err := strconv.Atoi(spec)
+			if err != nil {
+				warn("Invalid index: %s. Must be a number.", spec)
+				continue
+			}
+			
+			// Adjust to 0-based indexing
+			idx--
+			
+			if idx < 0 || idx >= len(branches) {
+				warn("Index %s out of bounds. Valid range: 1-%d", spec, len(branches))
+				continue
+			}
+			
+			selectedBranches = append(selectedBranches, branches[idx])
+		}
+	}
+	
+	if len(selectedBranches) == 0 {
+		status("No valid branches selected by the provided indexes.")
+		return
+	}
+	
+	confirmAndDeleteBranches(selectedBranches, currentBranch, force)
+}
+
 func showHelp() {
 	title("%s - Git Branch Manager", AppName)
 
@@ -624,7 +721,13 @@ func showHelp() {
 	fmt.Println("      Requires confirmation before deletion")
 	fmt.Println("")
 
-	t("  Delete <pattern>\n")
+	t("  delete <indexes>\n")
+	fmt.Println("      Delete branches by their index number as shown in list output")
+	fmt.Println("      Can specify single indexes (1,3,5) or ranges (1-4)")
+	fmt.Println("      Requires confirmation before deletion")
+	fmt.Println("")
+
+	t("  Delete <pattern|indexes>\n")
 	fmt.Println("      Same as delete, but forces deletion with -D flag")
 	fmt.Println("")
 
@@ -648,6 +751,10 @@ func showHelp() {
 
 	e("  %s delete test*\n", AppName)
 	fmt.Println("      Deletes all branches starting with 'test'")
+	fmt.Println("")
+
+	e("  %s delete 1,3,5-7\n", AppName)
+	fmt.Println("      Deletes branches with indexes 1, 3, and 5 through 7")
 	fmt.Println("")
 
 	e("  %s keep main development\n", AppName)
